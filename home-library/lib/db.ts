@@ -1,8 +1,18 @@
-import { sql } from '@vercel/postgres';
+import postgres from 'postgres';
 
+let sql: ReturnType<typeof postgres>;
 let isInitialized = false;
 
 export const getDb = () => {
+  if (!sql) {
+    const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
+    
+    if (!connectionString) {
+      throw new Error('POSTGRES_URL or DATABASE_URL environment variable is required');
+    }
+
+    sql = postgres(connectionString);
+  }
   return sql;
 };
 
@@ -10,7 +20,8 @@ export const initDb = async () => {
   if (isInitialized) return;
   
   try {
-    await sql`
+    const db = getDb();
+    await db`
       CREATE TABLE IF NOT EXISTS books (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,

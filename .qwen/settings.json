@@ -5,7 +5,9 @@
       "Bash(git push *)",
       "Bash(git commit *)",
       "Bash(git config *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(npm uninstall *)",
+      "Bash(git add *)"
     ]
   },
   "$version": 3
