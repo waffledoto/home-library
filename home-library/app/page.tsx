@@ -198,7 +198,7 @@ export default function Home() {
               icon="📚"
               color="#a0937d"
               onBookClick={handleBookClick}
-              onDropBook={handleUpdateBook}
+              onDropBook={(bookId, newStatus) => handleUpdateBook(bookId, { status: newStatus })}
             />
             <BookColumn
               title="Читаю"
@@ -206,7 +206,7 @@ export default function Home() {
               icon="📖"
               color="#8a7968"
               onBookClick={handleBookClick}
-              onDropBook={handleUpdateBook}
+              onDropBook={(bookId, newStatus) => handleUpdateBook(bookId, { status: newStatus })}
             />
             <BookColumn
               title="Прочитанные"
@@ -214,7 +214,7 @@ export default function Home() {
               icon="✅"
               color="#6f5e4f"
               onBookClick={handleBookClick}
-              onDropBook={handleUpdateBook}
+              onDropBook={(bookId, newStatus) => handleUpdateBook(bookId, { status: newStatus })}
             />
           </div>
         </main>
