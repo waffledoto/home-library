@@ -18,9 +18,7 @@ export async function POST(request: Request) {
     const filename = `${prefix}/${uuidv4()}.${ext}`;
 
     // Загружаем файл в Vercel Blob
-    const blob = await put(filename, file, {
-      access: 'public',
-    });
+    const blob = await put(filename, file);
 
     // Возвращаем публичный URL
     return NextResponse.json({ url: blob.url, filename: blob.pathname });
