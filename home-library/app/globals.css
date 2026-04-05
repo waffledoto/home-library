@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+  /* Приглушенная кофейная палитра для комфортного чтения */
+  --coffee-50: #f8f5f2;
+  --coffee-100: #f0ebe6;
+  --coffee-200: #e8e0d8;
+  --coffee-300: #d4c8ba;
+  --coffee-400: #b8a896;
+  --coffee-500: #9a8672;
+  --coffee-600: #7a6854;
+  --coffee-700: #5c4d3c;
+  --coffee-800: #3d3228;
+  --coffee-900: #2a2218;
+  
+  --background: var(--coffee-50);
+  --foreground: var(--coffee-900);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--coffee-50);
+  color: var(--coffee-800);
+  font-family: var(--font-neucha), Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+/* Приглушённый скроллбар */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--coffee-100);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--coffee-300);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--coffee-400);
+}
