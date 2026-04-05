@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server';
-import getDb from '@/lib/db';
+import { sql } from '@vercel/postgres';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function GET() {
   try {
-    const db = getDb();
-    const books = db.prepare('SELECT * FROM books ORDER BY created_at DESC').all();
-    return NextResponse.json(books);
+    const { rows } = await sql`SELECT * FROM books ORDER BY created_at DESC`;
+    return NextResponse.json(rows);
   } catch (error) {
     console.error('Error fetching books:', error);
     return NextResponse.json({ error: 'Failed to fetch books' }, { status: 500 });
@@ -15,7 +14,6 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const db = getDb();
     const body = await request.json();
     const { title, author, description, cover_image, file_path, status } = body;
 
@@ -27,15 +25,13 @@ export async function POST(request: Request) {
     }
 
     const id = uuidv4();
-    const stmt = db.prepare(`
+    const { rows } = await sql`
       INSERT INTO books (id, title, author, description, cover_image, file_path, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
+      VALUES (${id}, ${title}, ${author}, ${description || null}, ${cover_image || null}, ${file_path || null}, ${status || 'not_started'})
+      RETURNING *
+    `;
 
-    stmt.run(id, title, author, description || null, cover_image || null, file_path || null, status || 'not_started');
-
-    const newBook = db.prepare('SELECT * FROM books WHERE id = ?').get(id);
-    return NextResponse.json(newBook, { status: 201 });
+    return NextResponse.json(rows[0], { status: 201 });
   } catch (error) {
     console.error('Error creating book:', error);
     return NextResponse.json({ error: 'Failed to create book' }, { status: 500 });
