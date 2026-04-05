@@ -6,12 +6,14 @@ let isInitialized = false;
 export const getDb = () => {
   if (!sql) {
     const connectionString = process.env.POSTGRES_URL || process.env.DATABASE_URL;
-    
+
     if (!connectionString) {
       throw new Error('POSTGRES_URL or DATABASE_URL environment variable is required');
     }
 
-    sql = postgres(connectionString);
+    sql = postgres(connectionString, {
+      ssl: 'require', // Required for Neon and most cloud PostgreSQL providers
+    });
   }
   return sql;
 };
