@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
-import { del } from '@vercel/blob';
+import fs from 'fs';
+import path from 'path';
 
 let dbInitialized = false;
 
@@ -64,20 +65,19 @@ export async function PUT(
       RETURNING *
     `;
 
-    // Удаляем старые файлы из Vercel Blob если они были заменены
+    // Удаляем старые локальные файлы если они были заменены
     if (cover_image && oldCover && oldCover !== cover_image) {
       try {
-        // Извлекаем pathname из URL Vercel Blob
-        const oldPathname = extractPathnameFromUrl(oldCover);
-        if (oldPathname) await del(oldPathname);
+        const oldFilePath = path.join(process.cwd(), 'public', oldCover);
+        if (fs.existsSync(oldFilePath)) fs.unlinkSync(oldFilePath);
       } catch (e) {
         console.warn('Failed to delete old cover:', e);
       }
     }
     if (file_path && oldFile && oldFile !== file_path) {
       try {
-        const oldPathname = extractPathnameFromUrl(oldFile);
-        if (oldPathname) await del(oldPathname);
+        const oldFilePath = path.join(process.cwd(), 'public', oldFile);
+        if (fs.existsSync(oldFilePath)) fs.unlinkSync(oldFilePath);
       } catch (e) {
         console.warn('Failed to delete old file:', e);
       }
@@ -107,19 +107,19 @@ export async function DELETE(
 
     const book = existing[0];
 
-    // Удаляем файлы из Vercel Blob
+    // Удаляем локальные файлы
     if (book.cover_image) {
       try {
-        const pathname = extractPathnameFromUrl(book.cover_image);
-        if (pathname) await del(pathname);
+        const filePath = path.join(process.cwd(), 'public', book.cover_image);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       } catch (e) {
         console.warn('Failed to delete cover file:', e);
       }
     }
     if (book.file_path) {
       try {
-        const pathname = extractPathnameFromUrl(book.file_path);
-        if (pathname) await del(pathname);
+        const filePath = path.join(process.cwd(), 'public', book.file_path);
+        if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
       } catch (e) {
         console.warn('Failed to delete book file:', e);
       }
@@ -132,18 +132,5 @@ export async function DELETE(
   } catch (error) {
     console.error('Error deleting book:', error);
     return NextResponse.json({ error: 'Failed to delete book' }, { status: 500 });
-  }
-}
-
-// Вспомогательная функция для извлечения pathname из URL Vercel Blob
-function extractPathnameFromUrl(url: string): string | null {
-  try {
-    // URL Vercel Blob имеет вид: https://<storeId>.public.blob.vercel-storage.com/<pathname>
-    const parsed = new URL(url);
-    // pathname начинается с /, убираем его
-    return parsed.pathname.startsWith('/') ? parsed.pathname.slice(1) : parsed.pathname;
-  } catch {
-    // Если это не URL, возможно это уже pathname
-    return url.startsWith('/') ? url.slice(1) : url;
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { put } from '@vercel/blob';
+import fs from 'fs';
+import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 export async function POST(request: Request) {
@@ -12,16 +13,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Определяем префикс папки в зависимости от типа файла
-    const prefix = fileType === 'cover' ? 'covers' : 'books';
+    // Создаём директорию для загрузок
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    // Генерируем уникальное имя файла
     const ext = file.name.split('.').pop();
-    const filename = `${prefix}/${uuidv4()}.${ext}`;
+    const filename = `${uuidv4()}.${ext}`;
+    const filePath = path.join(uploadDir, filename);
 
-    // Загружаем файл в Vercel Blob
-    const blob = await put(filename, file);
+    // Сохраняем файл
+    const bytes = await file.arrayBuffer();
+    fs.writeFileSync(filePath, Buffer.from(bytes));
 
-    // Возвращаем публичный URL
-    return NextResponse.json({ url: blob.url, filename: blob.pathname });
+    // Возвращаем путь к файлу
+    const fileUrl = `/uploads/${filename}`;
+    return NextResponse.json({ url: fileUrl, filename });
   } catch (error) {
     console.error('Error uploading file:', error);
     return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
