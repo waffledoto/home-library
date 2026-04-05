@@ -7,7 +7,10 @@
       "Bash(git config *)",
       "Bash(npm install *)",
       "Bash(npm uninstall *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(rm *)",
+      "Bash(rmdir *)",
+      "Bash(del *)"
     ]
   },
   "$version": 3
