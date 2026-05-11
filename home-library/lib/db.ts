@@ -10,32 +10,48 @@ export const getDb = () => {
   if (!sql) {
     const connectionString =
       process.env.POSTGRES_URL ||
-      process.env.DATABASE_URL ||
-      process.env.NEXT_PUBLIC_SUPABASE_DB_URL;
+      process.env.DATABASE_URL;
 
     if (!connectionString) {
       throw new Error(
-        'Database URL not found. Set POSTGRES_URL, DATABASE_URL, or NEXT_PUBLIC_SUPABASE_DB_URL in your environment variables.'
+        'Database URL not found. Set POSTGRES_URL or DATABASE_URL in your environment variables.'
       );
     }
 
-    // Supabase и другие облачные провайдеры требуют SSL
-    const isDev = process.env.NODE_ENV === 'development';
-
+    // Neon PostgreSQL требует SSL-соединение
+    const isServerless = !!process.env.VERCEL;
     sql = postgres(connectionString, {
-      ssl: isDev ? 'prefer' : 'require',
-      max: 10,
-      idle_timeout: 20,
+      ssl: {
+        rejectUnauthorized: false, // Для Neon
+      },
+      max: isServerless ? 1 : 10,
+      idle_timeout: isServerless ? 5 : 20,
+      max_lifetime: isServerless ? 60 : 600,
+      connect_timeout: 30,
     });
 
-    console.log('✅ Database connection established');
+    console.log('✅ PostgreSQL connection established');
   }
   return sql;
 };
 
 /**
+ * Сбросить подключение (для переподключения при ошибке)
+ */
+export const resetDb = async () => {
+  if (sql) {
+    try {
+      await sql.end();
+    } catch (e) {
+      // Игнорируем ошибки при закрытии
+    }
+    sql = null;
+    initPromise = null;
+  }
+};
+
+/**
  * Инициализировать базу данных (создать таблицы)
- * Вызывается автоматически при первом запросе
  */
 export const initDb = async (): Promise<void> => {
   if (initPromise) return initPromise;
@@ -66,7 +82,7 @@ export const initDb = async (): Promise<void> => {
       console.log('✅ Database tables initialized');
     } catch (error) {
       console.error('❌ Database initialization failed:', error);
-      initPromise = null; // Сбросить при ошибке для повторной попытки
+      initPromise = null;
       throw error;
     }
   })();

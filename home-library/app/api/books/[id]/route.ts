@@ -1,25 +1,20 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getDb, initDb } from '@/lib/db';
 
-// Гарантируем инициализацию БД при старте
-const dbReady = initDb();
+// Инициализируем БД при старте
+initDb().catch((err) => {
+  console.error('Initial DB init failed:', err);
+});
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await dbReady;
     const sql = getDb();
     const { id } = await params;
     const body = await request.json();
     const { title, author, description, cover_image, file_path, file_name, file_size, status, current_page, total_pages } = body;
-
-    // Проверяем существование книги
-    const existing = await sql`SELECT * FROM books WHERE id = ${id}`;
-    if (existing.length === 0) {
-      return NextResponse.json({ error: 'Book not found' }, { status: 404 });
-    }
 
     // Обновляем книгу
     const updatedBook = await sql`
@@ -39,6 +34,10 @@ export async function PUT(
       RETURNING *
     `;
 
+    if (updatedBook.length === 0) {
+      return NextResponse.json({ error: 'Book not found' }, { status: 404 });
+    }
+
     return NextResponse.json(updatedBook[0]);
   } catch (error) {
     console.error('Error updating book:', error);
@@ -47,11 +46,10 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await dbReady;
     const sql = getDb();
     const { id } = await params;
 

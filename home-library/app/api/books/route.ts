@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb, initDb } from '@/lib/db';
 import { v4 as uuidv4 } from 'uuid';
 
-// Гарантируем инициализацию БД при старте
-const dbReady = initDb();
+// Инициализируем БД при старте
+initDb().catch((err) => {
+  console.error('Initial DB init failed:', err);
+});
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    await dbReady;
     const sql = getDb();
     const books = await sql`SELECT * FROM books ORDER BY created_at DESC`;
     return NextResponse.json(books);
@@ -17,9 +18,8 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    await dbReady;
     const sql = getDb();
     const body = await request.json();
     const { title, author, description, cover_image, file_path, file_name, file_size, status } = body;
@@ -34,14 +34,12 @@ export async function POST(request: Request) {
     const id = uuidv4();
     const newBook = await sql`
       INSERT INTO books (
-        id, title, author, description, cover_image, 
+        id, title, author, description, cover_image,
         file_path, file_name, file_size, status
       )
-      VALUES (
-        ${id}, ${title}, ${author}, ${description || null}, 
-        ${cover_image || null}, ${file_path || null}, 
-        ${file_name || null}, ${file_size || 0}, ${status || 'not_started'}
-      )
+      VALUES (${id}, ${title}, ${author}, ${description || null},
+              ${cover_image || null}, ${file_path || null},
+              ${file_name || null}, ${file_size || 0}, ${status || 'not_started'})
       RETURNING *
     `;
 
