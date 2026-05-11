@@ -24,7 +24,7 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }: AddBookMo
       let coverImageUrl = null;
       let bookFileUrl = null;
 
-      // Загружаем обложку если есть
+      // Обрабатываем обложку если есть
       if (coverImage) {
         const formData = new FormData();
         formData.append('file', coverImage);
@@ -36,22 +36,14 @@ export default function AddBookModal({ isOpen, onClose, onBookAdded }: AddBookMo
         });
 
         const data = await response.json();
-        coverImageUrl = data.url;
+        // Для обложек используем Data URL
+        coverImageUrl = data.dataUrl || data.path;
       }
 
-      // Загружаем файл книги если есть
+      // Для PDF файлов на Vercel — только метаданные (файлы не сохраняются)
+      // Пользователь загрузит PDF при чтении
       if (bookFile) {
-        const formData = new FormData();
-        formData.append('file', bookFile);
-        formData.append('type', 'book');
-
-        const response = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-
-        const data = await response.json();
-        bookFileUrl = data.url;
+        bookFileUrl = `upload:${bookFile.name}:${bookFile.size}`;
       }
 
       // Создаём книгу
