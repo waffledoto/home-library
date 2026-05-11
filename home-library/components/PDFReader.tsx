@@ -30,19 +30,64 @@ export default function PDFReader({ book, allBooks, onClose, onUpdate }: PDFRead
     }
   }, [book]);
 
-  const handleLocalFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLocalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type === 'application/pdf') {
-      const url = URL.createObjectURL(file);
-      setPdfFile(url);
-      
+    if (!file || file.type !== 'application/pdf') return;
+
+    // Загружаем файл на сервер
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('type', 'book');
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload file');
+      }
+
+      const data = await response.json();
+      const filePath = data.path;
+
+      // Сохраняем путь к файлу в БД
+      await fetch(`/api/books/${book.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file_path: filePath,
+          file_name: file.name,
+          file_size: file.size
+        }),
+      });
+
+      // Устанавливаем PDF файл
+      setPdfFile(filePath);
+
       // Получаем количество страниц
+      const url = URL.createObjectURL(file);
       const loadingTask = (window as any).pdfjsLib?.getDocument(url);
       if (loadingTask) {
         loadingTask.promise.then((pdf: any) => {
           setTotalPages(pdf.numPages);
+          // Сохраняем количество страниц в БД
+          fetch(`/api/books/${book.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              total_pages: pdf.numPages
+            }),
+          });
         });
       }
+
+      // Обновляем список книг
+      onUpdate();
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Ошибка загрузки файла');
     }
   };
 
@@ -66,10 +111,14 @@ export default function PDFReader({ book, allBooks, onClose, onUpdate }: PDFRead
 
   const handleSaveProgress = async () => {
     try {
+      // Если статус "not_started", меняем на "reading"
+      const newStatus = book.status === 'not_started' ? 'reading' : book.status;
+      
       await fetch(`/api/books/${book.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          status: newStatus,
           current_page: currentPage,
           total_pages: totalPages
         }),
@@ -78,6 +127,7 @@ export default function PDFReader({ book, allBooks, onClose, onUpdate }: PDFRead
       alert('Прогресс сохранён!');
     } catch (error) {
       console.error('Error saving progress:', error);
+      alert('Ошибка сохранения');
     }
   };
 
