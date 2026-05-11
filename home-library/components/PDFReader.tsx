@@ -35,44 +35,44 @@ export default function PDFReader({ book, allBooks, onClose, onUpdate }: PDFRead
     const file = e.target.files?.[0];
     if (!file || file.type !== 'application/pdf') return;
 
-    // Преобразуем файл в Data URL (base64)
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const dataUrl = event.target?.result as string;
-      
-      try {
-        // Сохраняем Data URL в БД (для небольших файлов)
-        // Или сохраняем только метаданные
-        await fetch(`/api/books/${book.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            file_path: dataUrl, // Data URL для PDF
-            file_name: file.name,
-            file_size: file.size
-          }),
-        });
+    // Сохраняем только метаданные файла в БД
+    try {
+      await fetch(`/api/books/${book.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file_name: file.name,
+          file_size: file.size,
+          status: book.status === 'not_started' ? 'reading' : book.status
+        }),
+      });
 
-        // Устанавливаем PDF файл
-        setPdfFile(dataUrl);
+      // Устанавливаем PDF файл как временный URL (работает до перезагрузки)
+      const dataUrl = URL.createObjectURL(file);
+      setPdfFile(dataUrl);
 
-        // Обновляем список книг
-        onUpdate();
-
-        // Меняем статус на "Читаю"
-        if (book.status === 'not_started') {
-          await fetch(`/api/books/${book.id}`, {
+      // Получаем количество страниц
+      const loadingTask = (window as any).pdfjsLib?.getDocument(dataUrl);
+      if (loadingTask) {
+        loadingTask.promise.then((pdf: any) => {
+          setTotalPages(pdf.numPages);
+          // Сохраняем количество страниц в БД
+          fetch(`/api/books/${book.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'reading' }),
+            body: JSON.stringify({
+              total_pages: pdf.numPages
+            }),
           });
-        }
-      } catch (error) {
-        console.error('Error saving PDF:', error);
-        alert('Ошибка сохранения PDF');
+        });
       }
-    };
-    reader.readAsDataURL(file);
+
+      // Обновляем список книг
+      onUpdate();
+    } catch (error) {
+      console.error('Error saving PDF metadata:', error);
+      alert('Ошибка сохранения');
+    }
   };
 
   const handleStatusChange = async (newStatus: 'not_started' | 'reading' | 'finished') => {
