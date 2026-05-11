@@ -24,71 +24,55 @@ export default function PDFReader({ book, allBooks, onClose, onUpdate }: PDFRead
   const [sortBy, setSortBy] = useState('newest');
 
   useEffect(() => {
-    // Если у книги есть файл, используем его
-    if (book.file_path) {
+    // Если у книги есть файл (Data URL или путь), используем его
+    if (book.file_path && !book.file_path.startsWith('upload:')) {
       setPdfFile(book.file_path);
     }
+    // Иначе оставляем null — пользователь загрузит файл вручную
   }, [book]);
 
   const handleLocalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || file.type !== 'application/pdf') return;
 
-    // Загружаем файл на сервер
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('type', 'book');
+    // Преобразуем файл в Data URL (base64)
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const dataUrl = event.target?.result as string;
+      
+      try {
+        // Сохраняем Data URL в БД (для небольших файлов)
+        // Или сохраняем только метаданные
+        await fetch(`/api/books/${book.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            file_path: dataUrl, // Data URL для PDF
+            file_name: file.name,
+            file_size: file.size
+          }),
+        });
 
-    try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
+        // Устанавливаем PDF файл
+        setPdfFile(dataUrl);
 
-      if (!response.ok) {
-        throw new Error('Failed to upload file');
-      }
+        // Обновляем список книг
+        onUpdate();
 
-      const data = await response.json();
-      const filePath = data.path;
-
-      // Сохраняем путь к файлу в БД
-      await fetch(`/api/books/${book.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          file_path: filePath,
-          file_name: file.name,
-          file_size: file.size
-        }),
-      });
-
-      // Устанавливаем PDF файл
-      setPdfFile(filePath);
-
-      // Получаем количество страниц
-      const url = URL.createObjectURL(file);
-      const loadingTask = (window as any).pdfjsLib?.getDocument(url);
-      if (loadingTask) {
-        loadingTask.promise.then((pdf: any) => {
-          setTotalPages(pdf.numPages);
-          // Сохраняем количество страниц в БД
-          fetch(`/api/books/${book.id}`, {
+        // Меняем статус на "Читаю"
+        if (book.status === 'not_started') {
+          await fetch(`/api/books/${book.id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              total_pages: pdf.numPages
-            }),
+            body: JSON.stringify({ status: 'reading' }),
           });
-        });
+        }
+      } catch (error) {
+        console.error('Error saving PDF:', error);
+        alert('Ошибка сохранения PDF');
       }
-
-      // Обновляем список книг
-      onUpdate();
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('Ошибка загрузки файла');
-    }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleStatusChange = async (newStatus: 'not_started' | 'reading' | 'finished') => {
