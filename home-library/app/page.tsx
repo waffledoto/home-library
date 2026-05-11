@@ -10,6 +10,8 @@ import LeftSidebar from '@/components/LeftSidebar';
 import RightSidebar from '@/components/RightSidebar';
 import { DndContext, DragEndEvent } from '@dnd-kit/core';
 
+export const dynamic = 'force-dynamic';
+
 export interface Book {
   id: string;
   title: string;
