@@ -1,16 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, initDb } from '@/lib/db';
 
-// Инициализируем БД при старте
-initDb().catch((err) => {
-  console.error('Initial DB init failed:', err);
-});
-
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await initDb();
     const sql = getDb();
     const { id } = await params;
     const body = await request.json();
@@ -50,11 +46,7 @@ export async function PUT(
     return NextResponse.json(updatedBook[0]);
   } catch (error: any) {
     console.error('Error updating book:', error);
-    console.error('Error details:', error.message);
-    return NextResponse.json(
-      { error: 'Failed to update book', details: error.message }, 
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Failed to update book', details: error.message }, { status: 500 });
   }
 }
 
@@ -63,6 +55,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await initDb();
     const sql = getDb();
     const { id } = await params;
 
