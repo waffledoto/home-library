@@ -118,20 +118,26 @@ export default function Home() {
     const book = books.find(b => b.id === bookId);
     if (!book) return;
 
-    const dropZoneId = over.id as string;
+    const dropId = over.id as string;
 
-    // Определяем статус по зоне drop
-    let newStatus: Book['status'];
-    if (dropZoneId === 'column-Не начатые') {
-      newStatus = 'not_started';
-    } else if (dropZoneId === 'column-Читаю') {
-      newStatus = 'reading';
-    } else if (dropZoneId === 'column-Прочитанные') {
-      newStatus = 'finished';
+    // Определяем статус по ID drop-зоны
+    // dropId может быть либо колонкой (column-...), либо книгой внутри колонки
+    let newStatus: Book['status'] | null = null;
+
+    if (dropId.startsWith('column-')) {
+      // Дроп на колонку
+      if (dropId === 'column-Не начатые') newStatus = 'not_started';
+      else if (dropId === 'column-Читаю') newStatus = 'reading';
+      else if (dropId === 'column-Прочитанные') newStatus = 'finished';
     } else {
-      return; // Drop не в колонку
+      // Дроп на книгу — определяем статус по книге, на которую дропнули
+      const droppedBook = books.find(b => b.id === dropId);
+      if (droppedBook) {
+        newStatus = droppedBook.status;
+      }
     }
 
+    if (!newStatus) return; // Неверная зона drop
     if (book.status === newStatus) return; // Тот же статус
 
     await handleUpdateBook(bookId, { status: newStatus });
